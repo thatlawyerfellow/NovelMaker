@@ -57,11 +57,13 @@ Character Descriptions (one per line)
 Chapter Prompts (one per line)
 Click the "Submit" button.
 After processing, you will be able to download the generated novel.
+
 File Structure
 
 novel_generator.py: Main script containing the novel generation logic and Gradio interface.
 requirements.txt: List of required Python libraries.
 README.md: Project documentation.
+
 License
 
 This project is licensed under the GNU General Public License v3.0. See the LICENSE file for details.
