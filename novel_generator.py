@@ -3,19 +3,16 @@ import gradio as gr
 
 # Function to get user input for novel details
 def get_novel_details(novel_length, language, style, total_characters, total_chapters):
-    # Store novel details in a dictionary
-    details = {
+    return {
         "novel_length": int(novel_length),
         "language": language,
         "style": style,
         "total_characters": int(total_characters),
         "total_chapters": int(total_chapters)
     }
-    return details
 
 # Function to get character details
 def get_character_details(character_descriptions):
-    # Save each character description in a separate file
     character_files = []
     for i, description in enumerate(character_descriptions.split("\n")):
         filename = f"character_{i+1}.txt"
@@ -33,7 +30,6 @@ def combine_character_files(total_characters):
 
 # Function to get chapter prompts from the user
 def get_chapter_prompts(chapter_prompts):
-    # Save each chapter prompt in a separate file
     chapter_files = []
     for i, prompt in enumerate(chapter_prompts.split("\n")):
         filename = f"chapter_{i+1}_prompt.txt"
@@ -50,12 +46,11 @@ def combine_chapter_prompts(total_chapters):
                 outfile.write(infile.read() + "\n")
 
 # Function to generate chapter content and summary using the selected model
-def generate_chapter_content(chapter_number, prompt, character_details, chapter_length, previous_summaries, model):
-    # Combine prompt with character details and previous summaries
+def generate_chapter_content(client, chapter_number, prompt, character_details, chapter_length, previous_summaries, model):
     prompt_with_summaries = f"{prompt}\n\nCharacter Details: {character_details}\n\nPrevious Summaries: {previous_summaries}"
     
     # Generate chapter content
-    response = openai.ChatCompletion.create(
+    response = client.chat.completions.create(
         model=model,
         messages=[
             {"role": "system", "content": "You are a helpful assistant."},
@@ -63,14 +58,13 @@ def generate_chapter_content(chapter_number, prompt, character_details, chapter_
         ],
         max_tokens=chapter_length
     )
-    content = response.choices[0].message['content']
+    content = response.choices[0].message.content
     
-    # Save chapter content to a file
     with open(f"Chapter_{chapter_number}.txt", 'w') as file:
         file.write(content)
     
     # Generate chapter summary
-    summary_response = openai.ChatCompletion.create(
+    summary_response = client.chat.completions.create(
         model=model,
         messages=[
             {"role": "system", "content": "You are a helpful assistant."},
@@ -78,9 +72,8 @@ def generate_chapter_content(chapter_number, prompt, character_details, chapter_
         ],
         max_tokens=600
     )
-    summary = summary_response.choices[0].message['content']
+    summary = summary_response.choices[0].message.content
     
-    # Save chapter summary to a file
     with open(f"chapter_summary_{chapter_number}.txt", 'w') as file:
         file.write(summary)
     
@@ -96,7 +89,7 @@ def combine_chapters(total_chapters):
 
 # Main function to orchestrate the novel generation process
 def generate_novel(api_key, model, novel_length, language, style, total_characters, total_chapters, character_descriptions, chapter_prompts):
-    openai.api_key = api_key
+    client = openai.OpenAI(api_key=api_key)
     novel_details = get_novel_details(novel_length, language, style, total_characters, total_chapters)
     character_files = get_character_details(character_descriptions)
     combine_character_files(novel_details["total_characters"])
@@ -111,7 +104,7 @@ def generate_novel(api_key, model, novel_length, language, style, total_characte
     for i in range(1, novel_details["total_chapters"] + 1):
         with open(f"chapter_{i}_prompt.txt", 'r') as file:
             prompt = file.read()
-        content, summary = generate_chapter_content(i, prompt, character_details, chapter_length, previous_summaries, model)
+        content, summary = generate_chapter_content(client, i, prompt, character_details, chapter_length, previous_summaries, model)
         previous_summaries += summary + "\n"
     
     book_file = combine_chapters(novel_details["total_chapters"])
@@ -122,7 +115,7 @@ interface = gr.Interface(
     fn=generate_novel,
     inputs=[
         gr.Textbox(label="OpenAI API Key", type="password"),
-        gr.Dropdown(label="Model", choices=["gpt-3.5-turbo"]),
+        gr.Dropdown(label="Model", choices=["gpt-3.5-turbo", "gpt-4"]),
         gr.Textbox(label="Novel Length (in words)"),
         gr.Textbox(label="Language"),
         gr.Textbox(label="Style"),
